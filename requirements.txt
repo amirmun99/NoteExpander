@@ -1,0 +1,16 @@
+discord.py>=2.3.0
+openai-whisper
+litellm
+tavily-python
+fastapi>=0.135.0
+uvicorn[standard]
+jinja2
+markdown
+bleach
+sqlalchemy[asyncio]>=2.0
+aiosqlite
+pyyaml
+python-dotenv
+pydantic>=2.0
+httpx>=0.27.0
+beautifulsoup4>=4.12.0

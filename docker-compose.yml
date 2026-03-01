@@ -1,0 +1,41 @@
+services:
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: noteexpander-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # GPU support: uncomment the deploy section below and run:
+    #   docker compose --profile gpu up
+    # profiles: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  noteexpander:
+    build: .
+    container_name: noteexpander-app
+    depends_on:
+      - ollama
+    env_file: .env
+    environment:
+      # Override the ollama_base_url so the app reaches the ollama container
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./prompts.yaml:/app/prompts.yaml:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    ports:
+      - "8765:8765"
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

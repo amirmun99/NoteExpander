@@ -1,0 +1,77 @@
+{# Progress panel fragment — returned by GET /notes/{id}/progress, swapped into #progress-inner #}
+
+{% if note.status == "complete" or note.status == "failed" %}
+  {# Signal the JS to trigger a page reload #}
+  <div id="progress-done-signal" data-status="{{ note.status }}" style="display:none"></div>
+{% endif %}
+
+<div style="padding: 24px 0 8px;">
+  <h3 style="margin: 0 0 16px; font-size: 0.95rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+    Pipeline Progress
+    {% if note.status == "pending" %}<span style="color: var(--text-muted); font-size: 0.8rem; text-transform: none;">— queued</span>{% endif %}
+  </h3>
+
+  {% if not stages %}
+    {# No progress data yet (note just queued or process restarted) #}
+    <div style="color: var(--text-muted); font-size: 0.9rem; padding: 8px 0;">
+      Waiting to start…
+    </div>
+  {% else %}
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      {% for stage_key in stage_order %}
+        {% set s = stages[stage_key] %}
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          padding: 12px 14px;
+          border-radius: 8px;
+          border: 1px solid {% if s.status == 'running' %}var(--accent){% elif s.status == 'complete' %}#2a4a2a{% elif s.status == 'skipped' %}var(--border){% else %}var(--border){% endif %};
+          background: {% if s.status == 'running' %}rgba(99,179,237,0.07){% elif s.status == 'complete' %}rgba(72,187,120,0.07){% else %}var(--surface){% endif %};
+          opacity: {% if s.status == 'waiting' %}0.5{% else %}1{% endif %};
+        ">
+          <div style="display: flex; align-items: center; gap: 10px;">
+
+            {# Status icon #}
+            <span style="font-size: 1rem; min-width: 1.2rem; text-align: center;">
+              {% if s.status == "waiting" %}○
+              {% elif s.status == "running" %}<span style="display:inline-block; animation: spin 1s linear infinite;">⟳</span>
+              {% elif s.status == "complete" %}<span style="color: #68d391;">✓</span>
+              {% elif s.status == "skipped" %}<span style="color: var(--text-muted);">–</span>
+              {% endif %}
+            </span>
+
+            {# Stage label #}
+            <span style="font-size: 0.9rem; font-weight: {% if s.status == 'running' %}600{% else %}400{% endif %}; flex: 1;">
+              {{ stage_labels[stage_key] }}
+            </span>
+
+            {# Elapsed time #}
+            {% set elapsed = s.elapsed() %}
+            {% if elapsed is not none %}
+              <span style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">
+                {{ "%.1f"|format(elapsed) }}s
+              </span>
+            {% endif %}
+          </div>
+
+          {# Summary snippet #}
+          {% if s.summary %}
+            <div style="
+              margin-left: 2.2rem;
+              font-size: 0.8rem;
+              color: var(--text-muted);
+              line-height: 1.4;
+              white-space: pre-wrap;
+              word-break: break-word;
+            ">{{ s.summary }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block sidebar_notes %}
+  {% for note in notes %}
+    <a href="/notes/{{ note.id }}" class="note-item">
+      <div class="note-item-title">
+        {{ note.report_title or note.raw_text[:50] }}{% if not note.report_title and note.raw_text|length > 50 %}...{% endif %}
+      </div>
+      <div class="note-item-meta">
+        <span class="badge badge-{{ note.status }}">
+          <span class="badge-dot"></span>
+          {{ note.status }}
+        </span>
+        &nbsp;{{ fmt_dt(note.created_at) }}
+      </div>
+    </a>
+  {% endfor %}
+{% endblock %}
+
+{% block content %}
+  {% if not notes and not search_q and not search_type and page == 1 %}
+    <div class="empty-state">
+      <h2>No notes yet</h2>
+      <p>Send a message or voice note to your Discord bot to get started.</p>
+    </div>
+  {% else %}
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px;">
+      <div>
+        <h1 style="font-size: 1.5rem; margin-bottom: 2px;">Research Notes</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">
+          {% if total_count is not none %}{{ total_count }} total · {% endif %}
+          {{ notes|length }} note{{ 's' if notes|length != 1 else '' }} on this page
+          {% if search_q %} matching <em>"{{ search_q }}"</em>{% endif %}
+          {% if search_type and search_type != 'all' %} · type: {{ search_type }}{% endif %}
+        </p>
+      </div>
+
+      {# Search + filter + sort form (C1, 3d) #}
+      <form method="get" action="/" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input
+          type="text"
+          name="q"
+          value="{{ search_q }}"
+          placeholder="Search notes…"
+          style="
+            padding: 7px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text);
+            font-size: 0.85rem;
+            width: 200px;
+          "
+        />
+        <select name="type" style="
+          padding: 7px 10px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          background: var(--surface2);
+          color: var(--text);
+          font-size: 0.85rem;
+        ">
+          <option value="all" {% if not search_type or search_type == 'all' %}selected{% endif %}>All types</option>
+          <option value="software"   {% if search_type == 'software'   %}selected{% endif %}>Software</option>
+          <option value="hardware"   {% if search_type == 'hardware'   %}selected{% endif %}>Hardware</option>
+          <option value="mechanical" {% if search_type == 'mechanical' %}selected{% endif %}>Mechanical</option>
+          <option value="business"   {% if search_type == 'business'   %}selected{% endif %}>Business</option>
+          <option value="unknown"    {% if search_type == 'unknown'    %}selected{% endif %}>Unknown</option>
+        </select>
+        <select name="sort" style="
+          padding: 7px 10px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          background: var(--surface2);
+          color: var(--text);
+          font-size: 0.85rem;
+        ">
+          <option value="date"       {% if sort == 'date' %}selected{% endif %}>Date ↓</option>
+          <option value="confidence" {% if sort == 'confidence' %}selected{% endif %}>Confidence ↓</option>
+          <option value="type"       {% if sort == 'type' %}selected{% endif %}>Type ↓</option>
+        </select>
+        <button type="submit" class="btn">Search</button>
+        {% if search_q or (search_type and search_type != 'all') %}
+          <a href="/" class="btn" style="color: var(--text-muted);">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% if not notes %}
+      <div class="empty-state" style="padding: 48px 32px;">
+        <h2>No matching notes</h2>
+        <p>Try a different search term or <a href="/">clear filters</a>.</p>
+      </div>
+    {% else %}
+      {% set has_pending = notes | selectattr('status', 'in', ['pending', 'processing']) | list | length > 0 %}
+
+      <div id="notes-table"
+        {% if has_pending %}
+          hx-get="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page }}"
+          hx-trigger="every 8s"
+          hx-target="#notes-table"
+          hx-swap="outerHTML"
+          hx-select="#notes-table"
+        {% endif %}>
+
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Title / Idea</th>
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Type</th>
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Status</th>
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Confidence</th>
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Time</th>
+              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for note in notes %}
+            <tr style="border-bottom: 1px solid var(--border); transition: background 0.1s;"
+                onmouseenter="this.style.background='var(--surface)'"
+                onmouseleave="this.style.background=''">
+              <td style="padding: 12px;">
+                <a href="/notes/{{ note.id }}" style="font-weight: 500;">
+                  {{ note.report_title or note.raw_text[:60] }}{% if not note.report_title and note.raw_text|length > 60 %}...{% endif %}
+                </a>
+                {% if note.source == 'voice' %}
+                  <span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 6px;">🎤</span>
+                {% endif %}
+                {% if note.requested_provider == 'openai' %}
+                  <span style="font-size: 0.7rem; color: var(--accent); margin-left: 4px;" title="Used OpenAI (#deep)">#deep</span>
+                {% endif %}
+              </td>
+              <td style="padding: 12px; color: var(--text-muted); font-size: 0.85rem;">
+                {{ note.project_type or '—' }}
+              </td>
+              <td style="padding: 12px;">
+                <span class="badge badge-{{ note.status }}">
+                  <span class="badge-dot"></span>
+                  {{ note.status }}
+                </span>
+              </td>
+              {# Confidence column (3e) #}
+              <td style="padding: 12px;">
+                {% if note.confidence %}
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 48px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden;">
+                      <div style="width: {{ (note.confidence * 100)|int }}%; height: 100%; background: {% if note.confidence >= 0.8 %}var(--success){% elif note.confidence >= 0.5 %}var(--warning){% else %}var(--error){% endif %}; border-radius: 3px;"></div>
+                    </div>
+                    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ "%.0f"|format(note.confidence * 100) }}%</span>
+                  </div>
+                {% else %}
+                  <span style="color: var(--text-muted);">—</span>
+                {% endif %}
+              </td>
+              {# Processing time column (3e) #}
+              <td style="padding: 12px; color: var(--text-muted); font-size: 0.83rem;">
+                {% if note.processing_started_at and note.processing_finished_at %}
+                  {% set secs = (note.processing_finished_at - note.processing_started_at).total_seconds()|int %}
+                  {% if secs >= 60 %}{{ secs // 60 }}m {{ secs % 60 }}s
+                  {% else %}{{ secs }}s{% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td style="padding: 12px; color: var(--text-muted); font-size: 0.83rem;">
+                {{ fmt_dt(note.created_at) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {# Pagination controls (3d) #}
+      {% if has_prev or has_next %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 24px;">
+          {% if has_prev %}
+            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page - 1 }}" class="btn">← Prev</a>
+          {% endif %}
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Page {{ page }}</span>
+          {% if has_next %}
+            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page + 1 }}" class="btn">Next →</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    {% endif %}
+  {% endif %}
+{% endblock %}

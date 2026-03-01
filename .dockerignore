@@ -1,0 +1,30 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Runtime data (mounted as volumes in compose)
+data/
+logs/
+
+# Secrets
+.env
+
+# Dev tooling
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Git
+.git/
+.github/

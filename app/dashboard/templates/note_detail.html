@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ note.report_title or 'Note' }} — {{ title }}{% endblock %}
+
+{% block sidebar_notes %}
+  <a href="/" class="note-item">
+    <div class="note-item-title" style="color: var(--text-muted);">← All notes</div>
+  </a>
+{% endblock %}
+
+{% block content %}
+  <div class="meta-row">
+    <a href="/" class="btn">← Back</a>
+
+    <span class="badge badge-{{ note.status }}">
+      <span class="badge-dot"></span>
+      {{ note.status }}
+    </span>
+
+    {% if note.project_type %}
+      <span style="color: var(--text-muted);">{{ note.project_type }}</span>
+    {% endif %}
+
+    {% if note.confidence %}
+      <span style="color: var(--text-muted);">{{ "%.0f"|format(note.confidence * 100) }}% confidence</span>
+    {% endif %}
+
+    <span style="color: var(--text-muted);">{{ note.source }} note</span>
+
+    {% if note.llm_provider %}
+      <span style="color: var(--text-muted); font-size: 0.8rem;">via {{ note.llm_provider }}</span>
+    {% endif %}
+
+    {# Delete button — always visible (C2) #}
+    <button class="btn btn-danger"
+            style="margin-left: auto;"
+            hx-delete="/notes/{{ note.id }}"
+            hx-confirm="Delete this note permanently? This cannot be undone."
+            hx-on::after-request="if(event.detail.successful) window.location='/'">
+      Delete
+    </button>
+  </div>
+
+  {% if note.status == 'pending' or note.status == 'processing' %}
+    <div style="padding: 32px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);">
+      <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;">
+        <h2 style="margin: 0;">
+          {% if note.status == 'pending' %}Queued for research…{% else %}Researching now…{% endif %}
+        </h2>
+      </div>
+      <p style="color: var(--text-muted); margin: 0 0 20px;">
+        This page updates live every 2 seconds.
+      </p>
+
+      <div style="background: var(--surface2); border-radius: 8px; padding: 14px 16px; margin-bottom: 4px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px;">Your note:</p>
+        <p style="font-size: 0.9rem; font-style: italic; margin: 0;">
+          {{ note.raw_text[:300] }}{% if note.raw_text|length > 300 %}…{% endif %}
+        </p>
+      </div>
+
+      {# HTMX live progress: polls /progress every 2s #}
+      <div hx-get="/notes/{{ note.id }}/progress"
+           hx-trigger="every 2s"
+           hx-target="#progress-inner"
+           hx-swap="innerHTML">
+      </div>
+      <div id="progress-inner">
+        <div style="padding: 16px 0; color: var(--text-muted); font-size: 0.9rem;">Loading pipeline status…</div>
+      </div>
+
+      <p style="margin-top: 16px; font-size: 0.8rem; color: var(--text-muted);">
+        Submitted: {{ fmt_dt(note.created_at) }}
+        {% if note.processing_started_at %} · Started: {{ fmt_dt(note.processing_started_at) }}{% endif %}
+      </p>
+    </div>
+
+    <script>
+      document.body.addEventListener("htmx:afterSettle", function(e) {
+        if (e.target && e.target.id === "progress-inner") {
+          const sig = document.getElementById("progress-done-signal");
+          if (sig) {
+            setTimeout(() => window.location.reload(), 1200);
+          }
+        }
+      });
+    </script>
+
+  {% elif note.status == 'failed' %}
+    <div style="padding: 32px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+        <h2 style="color: var(--error); margin: 0;">Research Failed</h2>
+        {# Re-run button (C3) #}
+        <button class="btn"
+                hx-post="/notes/{{ note.id }}/rerun"
+                hx-on::after-request="if(event.detail.successful) window.location.reload()">
+          ↺ Re-run
+        </button>
+      </div>
+      <p style="color: var(--text-muted); margin-bottom: 16px;">The pipeline encountered an error while processing your note.</p>
+      {% if note.error_message %}
+        <pre style="background: var(--surface2); padding: 12px; border-radius: 6px; font-size: 0.85rem; white-space: pre-wrap; color: var(--error);">{{ note.error_message }}</pre>
+      {% endif %}
+      <p style="margin-top: 16px; font-size: 0.9rem; color: var(--text-muted);">
+        <strong>Original note:</strong><br/>
+        {{ note.raw_text }}
+      </p>
+    </div>
+
+  {% elif note.status == 'complete' %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">
+          Created {{ fmt_dt(note.created_at) }}
+          {% if note.processing_finished_at %} · Completed {{ fmt_dt(note.processing_finished_at) }}{% endif %}
+        </p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        {# Re-run button (C3) #}
+        <button class="btn"
+                hx-post="/notes/{{ note.id }}/rerun"
+                hx-confirm="Re-run the full research pipeline on this note? The existing report will be replaced."
+                hx-on::after-request="if(event.detail.successful) window.location.href='/notes/{{ note.id }}'">
+          ↺ Re-run
+        </button>
+        <a href="/notes/{{ note.id }}/export.md" class="btn btn-primary">⬇ Export .md</a>
+      </div>
+    </div>
+
+    <div class="prose">
+      {% if rendered_html %}
+        {{ rendered_html | safe }}
+      {% else %}
+        <p style="color: var(--text-muted);">No report content available.</p>
+      {% endif %}
+    </div>
+
+    <hr class="divider" />
+
+    {# Agent log viewer (C4) #}
+    {% if agent_logs %}
+      <div style="margin-top: 16px; margin-bottom: 16px;">
+        <details>
+          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
+            Pipeline agent logs ({{ agent_logs|length }} stages)
+          </summary>
+          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+            {% for log in agent_logs %}
+              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--surface2); padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-weight: 600; font-size: 0.85rem;">{{ log.agent_name }}</span>
+                  {% if log.duration_seconds %}
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">{{ "%.1f"|format(log.duration_seconds) }}s</span>
+                  {% endif %}
+                </div>
+                {% if log.output_text %}
+                  <pre style="margin: 0; padding: 12px 14px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--text-muted); max-height: 300px; overflow-y: auto; background: var(--surface);">{{ log.output_text }}</pre>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    {% endif %}
+
+    {# Report version history (3c) #}
+    {% if report_versions %}
+      <div style="margin-top: 8px;">
+        <details>
+          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
+            Previous versions ({{ report_versions|length }})
+          </summary>
+          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+            {% for v in report_versions %}
+              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--surface2); padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 0.82rem; color: var(--text-muted);">
+                    {{ v.report_title or 'Untitled' }} — {{ fmt_dt(v.created_at) }}
+                  </span>
+                  {% if v.llm_provider %}
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">{{ v.llm_provider }}</span>
+                  {% endif %}
+                </div>
+                <div style="padding: 14px; max-height: 300px; overflow-y: auto;">
+                  <div class="prose" style="font-size: 0.88rem;">
+                    {{ render_markdown(v.report_markdown) | safe }}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    {% endif %}
+
+    {# Sources / search results tab (3b) #}
+    {% if sources %}
+      <div style="margin-top: 8px;">
+        <details>
+          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
+            Sources ({{ sources|length }} search results)
+          </summary>
+          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+            {% for src in sources %}
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface);">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px;">
+                  <a href="{{ src.url }}" target="_blank" rel="noopener noreferrer"
+                     style="font-weight: 500; font-size: 0.88rem; word-break: break-word;">
+                    {{ src.title or src.url }}
+                  </a>
+                  {% if src.score %}
+                    <span style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;">
+                      score {{ "%.2f"|format(src.score) }}
+                    </span>
+                  {% endif %}
+                </div>
+                {% if src.query %}
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">
+                    Query: <em>{{ src.query }}</em>
+                  </div>
+                {% endif %}
+                {% if src.snippet %}
+                  <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
+                    {{ src.snippet[:300] }}{% if src.snippet|length > 300 %}…{% endif %}
+                  </p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    {% endif %}
+
+    <div style="margin-top: 8px;">
+      <details>
+        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
+          Original note text
+        </summary>
+        <div style="margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-size: 0.9rem; white-space: pre-wrap;">{{ note.raw_text }}</div>
+      </details>
+    </div>
+  {% endif %}
+{% endblock %}
