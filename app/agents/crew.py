@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -69,6 +68,8 @@ def _llm_call(
             )
             if api_key:
                 kwargs["api_key"] = api_key
+            if settings.llm.provider == "ollama":
+                kwargs["api_base"] = settings.llm.ollama_base_url
 
             response = litellm.completion(**kwargs)
             text = response.choices[0].message.content or ""
@@ -151,9 +152,6 @@ def build_and_run_crew(
             no_format (bool): skip formatter, return analyst output directly
     """
     flags = pipeline_flags or {}
-    if settings.llm.provider == "ollama":
-        os.environ.setdefault("OLLAMA_API_BASE", settings.llm.ollama_base_url)
-
     model = model_override or settings.llm_model_string
     prompts = get_prompts()
     agent_logs: list[dict] = []
@@ -319,9 +317,6 @@ def compare_notes(
     notes_data: list of dicts with keys: title, type, confidence, report_markdown
     Returns a markdown comparison string.
     """
-    if settings.llm.provider == "ollama":
-        os.environ.setdefault("OLLAMA_API_BASE", settings.llm.ollama_base_url)
-
     model = model_override or settings.llm_model_string
 
     summaries = []
@@ -363,9 +358,6 @@ def followup_note(
     Returns a markdown answer to the follow-up question, grounded in the
     original report context.
     """
-    if settings.llm.provider == "ollama":
-        os.environ.setdefault("OLLAMA_API_BASE", settings.llm.ollama_base_url)
-
     model = model_override or settings.llm_model_string
 
     system_prompt = (

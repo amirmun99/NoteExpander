@@ -2,19 +2,253 @@
 
 {% block sidebar_notes %}
   {% for note in notes %}
-    <a href="/notes/{{ note.id }}" class="note-item">
-      <div class="note-item-title">
-        {{ note.report_title or note.raw_text[:50] }}{% if not note.report_title and note.raw_text|length > 50 %}...{% endif %}
-      </div>
-      <div class="note-item-meta">
-        <span class="badge badge-{{ note.status }}">
-          <span class="badge-dot"></span>
-          {{ note.status }}
-        </span>
-        &nbsp;{{ fmt_dt(note.created_at) }}
+    <a href="/notes/{{ note.id }}" class="sidebar-note-item">
+      <div class="sidebar-note-stripe" style="background: var(--type-{{ note.project_type or 'unknown' }});"></div>
+      <div class="sidebar-note-body">
+        <div class="sidebar-note-title">
+          {{ note.report_title or note.raw_text[:48] }}{% if not note.report_title and note.raw_text|length > 48 %}…{% endif %}
+        </div>
+        <div class="sidebar-note-meta">
+          <span class="sidebar-note-date">{{ fmt_dt(note.created_at) }}</span>
+          <span class="status-dot status-dot--{{ note.status }}"></span>
+        </div>
       </div>
     </a>
   {% endfor %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Filter bar ──────────────────────────────────────────────── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 160px;
+    max-width: 280px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
+  }
+
+  .filter-select {
+    padding: 8px 32px 8px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7a99' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color var(--transition);
+  }
+
+  .filter-select:focus { border-color: var(--accent); }
+
+  /* ── Page header ─────────────────────────────────────────────── */
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.6rem;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Note cards ──────────────────────────────────────────────── */
+  .notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .note-card {
+    display: flex;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    animation: card-enter 0.3s ease both;
+    text-decoration: none;
+  }
+
+  .note-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border-color: var(--border2);
+    text-decoration: none;
+    opacity: 1;
+  }
+
+  .note-card--processing {
+    border-color: rgba(96,165,250,0.4);
+  }
+
+  .note-card__stripe {
+    width: 4px;
+    flex-shrink: 0;
+    background: var(--type-unknown);
+  }
+
+  .note-card--processing .note-card__stripe {
+    animation: stripe-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes stripe-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .note-card__body {
+    flex: 1;
+    padding: 14px 16px;
+    min-width: 0;
+  }
+
+  .note-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .note-card__title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.3;
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .note-card__title:hover { opacity: 0.8; text-decoration: none; }
+
+  .note-icon {
+    font-style: normal;
+    margin-right: 4px;
+    font-size: 13px;
+  }
+
+  .note-card__badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .note-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Confidence pill */
+  .conf-pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 7px;
+    border-radius: 20px;
+  }
+
+  .conf-pill--high { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+  .conf-pill--mid  { background: rgba(251,191,36,0.12);  color: var(--warning); border: 1px solid rgba(251,191,36,0.3); }
+  .conf-pill--low  { background: rgba(248,113,113,0.12); color: var(--error);   border: 1px solid rgba(248,113,113,0.3); }
+
+  /* Staggered entry delays */
+  .note-card:nth-child(1)  { animation-delay: 0ms; }
+  .note-card:nth-child(2)  { animation-delay: 40ms; }
+  .note-card:nth-child(3)  { animation-delay: 80ms; }
+  .note-card:nth-child(4)  { animation-delay: 120ms; }
+  .note-card:nth-child(5)  { animation-delay: 160ms; }
+  .note-card:nth-child(6)  { animation-delay: 200ms; }
+  .note-card:nth-child(7)  { animation-delay: 240ms; }
+  .note-card:nth-child(8)  { animation-delay: 280ms; }
+  .note-card:nth-child(9)  { animation-delay: 320ms; }
+  .note-card:nth-child(10) { animation-delay: 360ms; }
+
+  /* ── Pagination ──────────────────────────────────────────────── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 32px;
+  }
+
+  .pagination-info {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    padding: 0 8px;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -24,67 +258,51 @@
       <p>Send a message or voice note to your Discord bot to get started.</p>
     </div>
   {% else %}
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px;">
+    <div class="page-header">
       <div>
-        <h1 style="font-size: 1.5rem; margin-bottom: 2px;">Research Notes</h1>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">
+        <h1 class="page-title">Research Notes</h1>
+        <div class="page-subtitle">
           {% if total_count is not none %}{{ total_count }} total · {% endif %}
-          {{ notes|length }} note{{ 's' if notes|length != 1 else '' }} on this page
-          {% if search_q %} matching <em>"{{ search_q }}"</em>{% endif %}
-          {% if search_type and search_type != 'all' %} · type: {{ search_type }}{% endif %}
-        </p>
+          {{ notes|length }} on this page
+          {%- if search_q %} · matching "{{ search_q }}"{% endif %}
+          {%- if search_type and search_type != 'all' %} · type: {{ search_type }}{% endif %}
+        </div>
       </div>
+    </div>
 
-      {# Search + filter + sort form (C1, 3d) #}
-      <form method="get" action="/" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    {# Search + filter + sort form #}
+    <form method="get" action="/" class="filter-bar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="6.5" cy="6.5" r="5"/>
+          <path d="M10.5 10.5L14 14"/>
+        </svg>
         <input
+          class="search-input"
           type="text"
           name="q"
           value="{{ search_q }}"
           placeholder="Search notes…"
-          style="
-            padding: 7px 12px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            background: var(--surface2);
-            color: var(--text);
-            font-size: 0.85rem;
-            width: 200px;
-          "
         />
-        <select name="type" style="
-          padding: 7px 10px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
-          background: var(--surface2);
-          color: var(--text);
-          font-size: 0.85rem;
-        ">
-          <option value="all" {% if not search_type or search_type == 'all' %}selected{% endif %}>All types</option>
-          <option value="software"   {% if search_type == 'software'   %}selected{% endif %}>Software</option>
-          <option value="hardware"   {% if search_type == 'hardware'   %}selected{% endif %}>Hardware</option>
-          <option value="mechanical" {% if search_type == 'mechanical' %}selected{% endif %}>Mechanical</option>
-          <option value="business"   {% if search_type == 'business'   %}selected{% endif %}>Business</option>
-          <option value="unknown"    {% if search_type == 'unknown'    %}selected{% endif %}>Unknown</option>
-        </select>
-        <select name="sort" style="
-          padding: 7px 10px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
-          background: var(--surface2);
-          color: var(--text);
-          font-size: 0.85rem;
-        ">
-          <option value="date"       {% if sort == 'date' %}selected{% endif %}>Date ↓</option>
-          <option value="confidence" {% if sort == 'confidence' %}selected{% endif %}>Confidence ↓</option>
-          <option value="type"       {% if sort == 'type' %}selected{% endif %}>Type ↓</option>
-        </select>
-        <button type="submit" class="btn">Search</button>
-        {% if search_q or (search_type and search_type != 'all') %}
-          <a href="/" class="btn" style="color: var(--text-muted);">Clear</a>
-        {% endif %}
-      </form>
-    </div>
+      </div>
+      <select name="type" class="filter-select">
+        <option value="all" {% if not search_type or search_type == 'all' %}selected{% endif %}>All types</option>
+        <option value="software"   {% if search_type == 'software'   %}selected{% endif %}>Software</option>
+        <option value="hardware"   {% if search_type == 'hardware'   %}selected{% endif %}>Hardware</option>
+        <option value="mechanical" {% if search_type == 'mechanical' %}selected{% endif %}>Mechanical</option>
+        <option value="business"   {% if search_type == 'business'   %}selected{% endif %}>Business</option>
+        <option value="unknown"    {% if search_type == 'unknown'    %}selected{% endif %}>Unknown</option>
+      </select>
+      <select name="sort" class="filter-select">
+        <option value="date"       {% if sort == 'date' %}selected{% endif %}>Date ↓</option>
+        <option value="confidence" {% if sort == 'confidence' %}selected{% endif %}>Confidence ↓</option>
+        <option value="type"       {% if sort == 'type' %}selected{% endif %}>Type A-Z</option>
+      </select>
+      <button type="submit" class="btn">Search</button>
+      {% if search_q or (search_type and search_type != 'all') %}
+        <a href="/" class="btn btn-ghost">✕ Clear</a>
+      {% endif %}
+    </form>
 
     {% if not notes %}
       <div class="empty-state" style="padding: 48px 32px;">
@@ -103,83 +321,72 @@
           hx-select="#notes-table"
         {% endif %}>
 
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Title / Idea</th>
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Type</th>
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Status</th>
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Confidence</th>
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Time</th>
-              <th style="padding: 8px 12px; text-align: left; font-weight: 500;">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for note in notes %}
-            <tr style="border-bottom: 1px solid var(--border); transition: background 0.1s;"
-                onmouseenter="this.style.background='var(--surface)'"
-                onmouseleave="this.style.background=''">
-              <td style="padding: 12px;">
-                <a href="/notes/{{ note.id }}" style="font-weight: 500;">
-                  {{ note.report_title or note.raw_text[:60] }}{% if not note.report_title and note.raw_text|length > 60 %}...{% endif %}
-                </a>
-                {% if note.source == 'voice' %}
-                  <span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 6px;">🎤</span>
-                {% endif %}
-                {% if note.requested_provider == 'openai' %}
-                  <span style="font-size: 0.7rem; color: var(--accent); margin-left: 4px;" title="Used OpenAI (#deep)">#deep</span>
-                {% endif %}
-              </td>
-              <td style="padding: 12px; color: var(--text-muted); font-size: 0.85rem;">
-                {{ note.project_type or '—' }}
-              </td>
-              <td style="padding: 12px;">
-                <span class="badge badge-{{ note.status }}">
-                  <span class="badge-dot"></span>
-                  {{ note.status }}
-                </span>
-              </td>
-              {# Confidence column (3e) #}
-              <td style="padding: 12px;">
-                {% if note.confidence %}
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <div style="width: 48px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden;">
-                      <div style="width: {{ (note.confidence * 100)|int }}%; height: 100%; background: {% if note.confidence >= 0.8 %}var(--success){% elif note.confidence >= 0.5 %}var(--warning){% else %}var(--error){% endif %}; border-radius: 3px;"></div>
-                    </div>
-                    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ "%.0f"|format(note.confidence * 100) }}%</span>
+        <div class="notes-list">
+          {% for note in notes %}
+            {% set ptype = note.project_type or 'unknown' %}
+            {% if note.confidence %}
+              {% if note.confidence >= 0.8 %}{% set conf_level = 'high' %}
+              {% elif note.confidence >= 0.5 %}{% set conf_level = 'mid' %}
+              {% else %}{% set conf_level = 'low' %}
+              {% endif %}
+            {% endif %}
+
+            <a href="/notes/{{ note.id }}"
+               class="note-card note-card--{{ note.status }}">
+              <div class="note-card__stripe"
+                   style="background: var(--type-{{ ptype }});"></div>
+              <div class="note-card__body">
+                <div class="note-card__header">
+                  <span class="note-card__title">
+                    {%- if note.source == 'voice' %}<span class="note-icon">🎙</span>{% endif -%}
+                    {{ note.report_title or note.raw_text[:70] }}{% if not note.report_title and note.raw_text|length > 70 %}…{% endif %}
+                  </span>
+                  <div class="note-card__badges">
+                    <span class="badge badge-{{ note.status }}">
+                      <span class="badge-dot"></span>
+                      {{ note.status }}
+                    </span>
+                    {% if note.project_type %}
+                      <span class="type-chip type-chip--{{ ptype }}">{{ ptype }}</span>
+                    {% endif %}
                   </div>
-                {% else %}
-                  <span style="color: var(--text-muted);">—</span>
-                {% endif %}
-              </td>
-              {# Processing time column (3e) #}
-              <td style="padding: 12px; color: var(--text-muted); font-size: 0.83rem;">
-                {% if note.processing_started_at and note.processing_finished_at %}
-                  {% set secs = (note.processing_finished_at - note.processing_started_at).total_seconds()|int %}
-                  {% if secs >= 60 %}{{ secs // 60 }}m {{ secs % 60 }}s
-                  {% else %}{{ secs }}s{% endif %}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-              <td style="padding: 12px; color: var(--text-muted); font-size: 0.83rem;">
-                {{ fmt_dt(note.created_at) }}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+                </div>
+                <div class="note-card__meta">
+                  {% if note.confidence %}
+                    <span class="conf-pill conf-pill--{{ conf_level }}">{{ (note.confidence * 100)|int }}%</span>
+                  {% endif %}
+                  <span class="meta-item">{{ fmt_dt(note.created_at) }}</span>
+                  {% if note.processing_started_at and note.processing_finished_at %}
+                    {% set secs = (note.processing_finished_at - note.processing_started_at).total_seconds()|int %}
+                    <span class="meta-item">
+                      {% if secs >= 60 %}{{ secs // 60 }}m {{ secs % 60 }}s{% else %}{{ secs }}s{% endif %}
+                    </span>
+                  {% endif %}
+                  {% if note.requested_provider == 'openai' %}
+                    <span class="meta-item" style="color: var(--accent);">#deep</span>
+                  {% endif %}
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
       </div>
 
-      {# Pagination controls (3d) #}
+      {# Pagination controls #}
       {% if has_prev or has_next %}
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 24px;">
+        <div class="pagination">
           {% if has_prev %}
-            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page - 1 }}" class="btn">← Prev</a>
+            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page - 1 }}" class="btn btn-ghost">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2L4 6l4 4"/></svg>
+              Prev
+            </a>
           {% endif %}
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Page {{ page }}</span>
+          <span class="pagination-info">Page {{ page }}</span>
           {% if has_next %}
-            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page + 1 }}" class="btn">Next →</a>
+            <a href="/?q={{ search_q }}&type={{ search_type }}&sort={{ sort }}&page={{ page + 1 }}" class="btn btn-ghost">
+              Next
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 2l4 4-4 4"/></svg>
+            </a>
           {% endif %}
         </div>
       {% endif %}

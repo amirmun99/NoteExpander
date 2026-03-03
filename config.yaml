@@ -1,49 +1,32 @@
 llm:
-  provider: "ollama"           # "ollama" | "openai"
-  ollama_base_url: "http://localhost:11434"
-  ollama_model: "qwen3:8b"
-  openai_model: "gpt-4o-mini"
+  provider: ollama
+  ollama_base_url: http://localhost:11434
+  ollama_model: qwen3:8b
+  openai_model: gpt-4o-mini
   temperature: 0.3
   max_tokens: 4096
-  timeout_seconds: 120         # Per-LLM-call timeout (seconds). Increase for slow local models.
-  max_retries: 2               # Retry an LLM call this many times on timeout or empty response.
-  # Optional per-stage overrides (omit any key to use the defaults above):
-  # stage_overrides:
-  #   classify:
-  #     max_tokens: 300
-  #     temperature: 0.1
-  #   format:
-  #     max_tokens: 8192
-
+  timeout_seconds: 360
+  max_retries: 2
 whisper:
-  model: "base"                # tiny|base|small|medium|large
-  language: "en"
-
+  model: base
+  language: en
 dashboard:
-  host: "0.0.0.0"             # 0.0.0.0 = LAN only (no port forwarding = no internet)
+  host: 0.0.0.0
   port: 8765
-  title: "Note Expander"
-
+  title: Note Expander
 discord:
-  allowed_user_ids: []         # Empty = any user. Set to [your_id] to restrict.
-  notification_channel_id: null  # null = reply in same channel
-
+  allowed_user_ids: []
+  notification_channel_id: null
 search:
   enabled: true
   max_results: 5
-
 processing:
   max_concurrent_jobs: 2
-  audio_download_dir: "data/audio"
-  db_path: "data/noteexpander.db"
-
+  audio_download_dir: data/audio
+  db_path: data/noteexpander.db
 logging:
-  level: "INFO"
-  file: "logs/app.log"
-
+  level: INFO
+  file: logs/app.log
 integrations:
-  # Obsidian vault sync (4c): write completed reports as .md files to a vault dir
-  # obsidian_vault_path: "~/Documents/ObsidianVault/Note Expander"
-
-  # Webhook notifications (4b): POST JSON payload on pipeline completion
-  # webhook_url: "https://hooks.zapier.com/hooks/catch/..."
+  obsidian_vault_path: null
+  webhook_url: null

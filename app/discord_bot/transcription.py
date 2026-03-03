@@ -55,7 +55,12 @@ async def transcribe_attachment(
         logger.info("Downloaded voice attachment to %s (%d bytes)", tmp_path, os.path.getsize(tmp_path))
 
         model = _get_whisper_model(whisper_model_name)
-        result = model.transcribe(tmp_path, language=language)
+        result = model.transcribe(
+            tmp_path,
+            language=language,
+            fp16=False,                      # FP16 is unsupported on CPU; avoids warning + potential instability
+            condition_on_previous_text=False, # prevent the model getting stuck / looping on long audio
+        )
         text = result.get("text", "").strip()
 
         logger.info("Whisper transcription complete: %d chars", len(text))

@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block page_title %}Settings — {{ title }}{% endblock %}
+
+{% block sidebar_notes %}
+  <a href="/" class="sidebar-note-item">
+    <div class="sidebar-note-stripe" style="background: var(--border);"></div>
+    <div class="sidebar-note-body">
+      <div class="sidebar-note-title" style="color: var(--muted);">← All notes</div>
+    </div>
+  </a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .settings-page { max-width: 720px; }
+
+  /* ── Settings cards ──────────────────────────────────────────── */
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+    animation: card-enter 0.25s ease both;
+  }
+
+  .settings-card:nth-child(1) { animation-delay: 0ms; }
+  .settings-card:nth-child(2) { animation-delay: 40ms; }
+  .settings-card:nth-child(3) { animation-delay: 80ms; }
+  .settings-card:nth-child(4) { animation-delay: 120ms; }
+  .settings-card:nth-child(5) { animation-delay: 160ms; }
+  .settings-card:nth-child(6) { animation-delay: 200ms; }
+  .settings-card:nth-child(7) { animation-delay: 240ms; }
+
+  .settings-card__header {
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .settings-card__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .settings-card__icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .settings-card__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .settings-card__desc {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.03em;
+  }
+
+  .settings-card__body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Field grid ──────────────────────────────────────────────── */
+  .field {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    align-items: start;
+    gap: 12px;
+  }
+
+  .field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    padding-top: 8px;
+  }
+
+  .field-label small {
+    display: block;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    line-height: 1.4;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Form inputs ─────────────────────────────────────────────── */
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  select,
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  input[type="password"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
+  }
+
+  /* API key blur effect */
+  input.api-key {
+    filter: blur(4px);
+    transition: filter var(--transition), border-color var(--transition), box-shadow var(--transition);
+  }
+
+  input.api-key:hover,
+  input.api-key:focus {
+    filter: blur(0);
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7a99' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  .checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .checkbox-row label {
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  /* ── Sticky save bar ─────────────────────────────────────────── */
+  .save-bar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    margin-top: -1px;
+  }
+
+  .alert-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    background: rgba(52,211,153,0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+
+  .restart-note {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    padding: 0 20px;
+  }
+
+  @media (max-width: 600px) {
+    .field { grid-template-columns: 1fr; gap: 6px; }
+    .field-label { padding-top: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+  <h1 style="font-family: var(--font-display); font-style: italic; font-size: 1.6rem; margin-bottom: 4px;">Settings</h1>
+  <p style="font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 24px; letter-spacing: 0.04em;">
+    CHANGES APPLY IMMEDIATELY · RESTART REQUIRED FOR DISCORD BOT
+  </p>
+
+  <form method="POST" action="/settings">
+
+    <!-- ── LLM ──────────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1" y="4" width="14" height="8" rx="2"/>
+            <circle cx="5" cy="8" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="11" cy="8" r="1" fill="currentColor" stroke="none"/>
+            <path d="M4 4V2M8 4V2M12 4V2"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">LLM Configuration</div>
+          <div class="settings-card__desc">Model provider, inference settings</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Provider<small>ollama = local · openai = cloud</small></div>
+          <select name="llm.provider">
+            <option value="ollama" {% if s.llm.provider == "ollama" %}selected{% endif %}>ollama</option>
+            <option value="openai" {% if s.llm.provider == "openai" %}selected{% endif %}>openai</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Ollama base URL<small>e.g. http://localhost:11434</small></div>
+          <input type="text" name="llm.ollama_base_url" value="{{ s.llm.ollama_base_url }}">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Ollama model<small>Must be pulled via <code>ollama pull</code></small></div>
+          <input type="text" name="llm.ollama_model" value="{{ s.llm.ollama_model }}">
+        </div>
+
+        <div class="field">
+          <div class="field-label">OpenAI model<small>Used when provider = openai or #deep tag</small></div>
+          <input type="text" name="llm.openai_model" value="{{ s.llm.openai_model }}">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Temperature<small>0.0 = deterministic · 1.0 = creative</small></div>
+          <input type="number" name="llm.temperature" value="{{ s.llm.temperature }}" min="0" max="2" step="0.05" style="width: 100px;">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Max tokens<small>Per LLM call; increase for longer reports</small></div>
+          <input type="number" name="llm.max_tokens" value="{{ s.llm.max_tokens }}" min="256" max="32768" step="256" style="width: 120px;">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Timeout (s)<small>Local models often need 300–600 s</small></div>
+          <input type="number" name="llm.timeout_seconds" value="{{ s.llm.timeout_seconds }}" min="30" max="3600" step="30" style="width: 100px;">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Max retries<small>Retries on timeout or empty response</small></div>
+          <input type="number" name="llm.max_retries" value="{{ s.llm.max_retries }}" min="1" max="10" style="width: 80px;">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Whisper ───────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="5" y="1" width="6" height="9" rx="3"/>
+            <path d="M3 8a5 5 0 0 0 10 0"/>
+            <path d="M8 13v2M6 15h4"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">Whisper</div>
+          <div class="settings-card__desc">Voice transcription settings</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Model size<small>Larger = more accurate but slower</small></div>
+          <select name="whisper.model" style="width: 140px;">
+            {% for m in ["tiny", "base", "small", "medium", "large"] %}
+            <option value="{{ m }}" {% if s.whisper.model == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Language<small>ISO 639-1 code, e.g. en, fr, de</small></div>
+          <input type="text" name="whisper.language" value="{{ s.whisper.language }}" maxlength="5" style="width: 80px;">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Web Search ────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="8" r="6.5"/>
+            <path d="M8 1.5C8 1.5 5.5 4 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4 10.5 8s-2.5 6.5-2.5 6.5"/>
+            <path d="M1.5 8h13"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">Web Search</div>
+          <div class="settings-card__desc">Tavily API integration</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Enable search</div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="search-enabled" name="search.enabled" {% if s.search.enabled %}checked{% endif %}>
+            <label for="search-enabled">Use Tavily to fetch live web results</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Max results<small>Per pipeline run</small></div>
+          <input type="number" name="search.max_results" value="{{ s.search.max_results }}" min="1" max="20" style="width: 80px;">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Processing ────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="8" r="2.5"/>
+            <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M11.53 4.47l1.42-1.42M3.05 12.95l1.42-1.42"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">Processing</div>
+          <div class="settings-card__desc">Pipeline concurrency</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Concurrent jobs<small>Parallel pipeline limit</small></div>
+          <input type="number" name="processing.max_concurrent_jobs" value="{{ s.processing.max_concurrent_jobs }}" min="1" max="10" style="width: 80px;">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Dashboard ─────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1" y="1" width="14" height="14" rx="2"/>
+            <path d="M1 6h14M6 6v8"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">Dashboard</div>
+          <div class="settings-card__desc">Display preferences</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Title</div>
+          <input type="text" name="dashboard.title" value="{{ s.dashboard.title }}">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Integrations ──────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M6.5 9.5a3 3 0 0 0 4.24 0l2-2a3 3 0 0 0-4.24-4.24l-1.12 1.12"/>
+            <path d="M9.5 6.5a3 3 0 0 0-4.24 0l-2 2a3 3 0 0 0 4.24 4.24l1.12-1.12"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">Integrations</div>
+          <div class="settings-card__desc">Obsidian sync, webhooks</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <div class="field">
+          <div class="field-label">Obsidian vault path<small>Leave blank to disable</small></div>
+          <input type="text" name="integrations.obsidian_vault_path"
+                 value="{{ s.integrations.obsidian_vault_path or '' }}"
+                 placeholder="~/Documents/ObsidianVault/NoteExpander">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Webhook URL<small>POST JSON on every completed note</small></div>
+          <input type="text" name="integrations.webhook_url"
+                 value="{{ s.integrations.webhook_url or '' }}"
+                 placeholder="https://hooks.zapier.com/…">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── API Keys ───────────────────────────────────────────────── -->
+    <div class="settings-card">
+      <header class="settings-card__header">
+        <span class="settings-card__icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="7" width="10" height="7" rx="1.5"/>
+            <path d="M5 7V5a3 3 0 0 1 6 0v2"/>
+            <circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <div>
+          <div class="settings-card__title">API Keys</div>
+          <div class="settings-card__desc">Stored in .env — hover to reveal</div>
+        </div>
+      </header>
+      <div class="settings-card__body">
+
+        <p style="font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin: 0;">
+          Leave blank to keep the existing value. Discord token is not editable here.
+        </p>
+
+        <div class="field">
+          <div class="field-label">Tavily API key<small>Enables web search (free tier available)</small></div>
+          <input class="api-key" type="password" name="TAVILY_API_KEY"
+                 placeholder="{{ mask(env.get('TAVILY_API_KEY', '')) or 'Not set' }}"
+                 autocomplete="new-password">
+        </div>
+
+        <div class="field">
+          <div class="field-label">OpenAI API key<small>Required for #deep tag or openai provider</small></div>
+          <input class="api-key" type="password" name="OPENAI_API_KEY"
+                 placeholder="{{ mask(env.get('OPENAI_API_KEY', '')) or 'Not set' }}"
+                 autocomplete="new-password">
+        </div>
+
+      </div>
+
+      <!-- ── Save bar (inside last card for sticky positioning) ── -->
+      <div class="save-bar">
+        <button type="submit" class="btn btn-primary">Save settings</button>
+        {% if saved %}
+          <span class="alert-saved">✓ Saved</span>
+        {% endif %}
+      </div>
+    </div>
+
+  </form>
+
+  <p class="restart-note">
+    LLM provider / model changes used by the Discord bot require an app restart.
+  </p>
+</div>
+{% endblock %}

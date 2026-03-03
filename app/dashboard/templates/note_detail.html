@@ -3,73 +3,467 @@
 {% block page_title %}{{ note.report_title or 'Note' }} — {{ title }}{% endblock %}
 
 {% block sidebar_notes %}
-  <a href="/" class="note-item">
-    <div class="note-item-title" style="color: var(--text-muted);">← All notes</div>
+  <a href="/" class="sidebar-note-item">
+    <div class="sidebar-note-stripe" style="background: var(--border);"></div>
+    <div class="sidebar-note-body">
+      <div class="sidebar-note-title" style="color: var(--muted);">← All notes</div>
+    </div>
   </a>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  /* ── Note header card ──────────────────────────────────────── */
+  .note-header-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .note-title {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    line-height: 1.25;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .note-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .note-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Confidence radial */
+  .conf-radial {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .conf-radial__text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* Provider badge */
+  .provider-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Processing card ───────────────────────────────────────── */
+  .processing-card {
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    margin-bottom: 24px;
+  }
+
+  .processing-card--active {
+    border-color: rgba(96,165,250,0.35);
+  }
+
+  .processing-card__title {
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    margin-bottom: 6px;
+  }
+
+  .processing-card__note-text {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 16px 0;
+    line-height: 1.5;
+  }
+
+  /* ── Tab nav ───────────────────────────────────────────────── */
+  .tab-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn--active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel--active {
+    display: block;
+    animation: fade-in 0.2s ease;
+  }
+
+  /* ── Sources grid ──────────────────────────────────────────── */
+  .sources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  .source-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+
+  .source-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+
+  .source-card__title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: block;
+    margin-bottom: 4px;
+    text-decoration: none;
+    line-height: 1.35;
+  }
+
+  .source-card__title:hover { color: var(--accent); opacity: 1; text-decoration: none; }
+
+  .source-card__domain {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .source-card__snippet {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .source-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .source-card__query {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .score-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* ── Pipeline timeline ─────────────────────────────────────── */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .timeline-item__dot {
+    position: absolute;
+    left: -28px;
+    top: 8px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+  }
+
+  .timeline-item--complete .timeline-item__dot {
+    background: var(--success);
+    border-color: var(--success);
+  }
+
+  .timeline-item__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .timeline-item__name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text);
+  }
+
+  .timeline-item__duration {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .timeline-item__output {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .timeline-item__output summary {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    font-family: var(--font-mono);
+  }
+
+  .timeline-item__output pre {
+    margin: 0;
+    padding: 10px 14px;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--muted);
+    max-height: 280px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+  }
+
+  /* ── History list ──────────────────────────────────────────── */
+  .history-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .history-item__header {
+    background: var(--surface2);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .history-item__title {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .history-item__meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .history-item__body {
+    padding: 16px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Failed / error card ───────────────────────────────────── */
+  .error-card {
+    padding: 28px;
+    border: 1px solid var(--error);
+    border-radius: var(--radius-lg);
+    background: rgba(248,113,113,0.05);
+    margin-bottom: 24px;
+  }
+
+  .error-card__title {
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    color: var(--error);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .error-card__pre {
+    background: var(--surface2);
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    white-space: pre-wrap;
+    color: var(--error);
+    font-family: var(--font-mono);
+    margin-top: 12px;
+  }
+
+  /* ── Original note expandable ──────────────────────────────── */
+  .orig-note {
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .orig-note summary {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .orig-note__body {
+    padding: 14px 16px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    line-height: 1.6;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="meta-row">
-    <a href="/" class="btn">← Back</a>
 
-    <span class="badge badge-{{ note.status }}">
-      <span class="badge-dot"></span>
-      {{ note.status }}
-    </span>
-
-    {% if note.project_type %}
-      <span style="color: var(--text-muted);">{{ note.project_type }}</span>
-    {% endif %}
-
-    {% if note.confidence %}
-      <span style="color: var(--text-muted);">{{ "%.0f"|format(note.confidence * 100) }}% confidence</span>
-    {% endif %}
-
-    <span style="color: var(--text-muted);">{{ note.source }} note</span>
-
-    {% if note.llm_provider %}
-      <span style="color: var(--text-muted); font-size: 0.8rem;">via {{ note.llm_provider }}</span>
-    {% endif %}
-
-    {# Delete button — always visible (C2) #}
-    <button class="btn btn-danger"
-            style="margin-left: auto;"
-            hx-delete="/notes/{{ note.id }}"
-            hx-confirm="Delete this note permanently? This cannot be undone."
-            hx-on::after-request="if(event.detail.successful) window.location='/'">
-      Delete
-    </button>
-  </div>
-
+  {# ── Processing / Pending state ─────────────────────────── #}
   {% if note.status == 'pending' or note.status == 'processing' %}
-    <div style="padding: 32px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);">
-      <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;">
-        <h2 style="margin: 0;">
-          {% if note.status == 'pending' %}Queued for research…{% else %}Researching now…{% endif %}
-        </h2>
+    <div class="meta-row">
+      <a href="/" class="btn btn-ghost">← Back</a>
+      <span class="badge badge-{{ note.status }}">
+        <span class="badge-dot"></span>{{ note.status }}
+      </span>
+      <button class="btn btn-danger"
+              style="margin-left: auto;"
+              hx-delete="/notes/{{ note.id }}"
+              hx-confirm="Delete this note permanently? This cannot be undone."
+              hx-on::after-request="if(event.detail.successful) window.location='/'">
+        Delete
+      </button>
+    </div>
+
+    <div class="processing-card processing-card--active">
+      <div class="processing-card__title">
+        {% if note.status == 'pending' %}Queued for research…{% else %}Researching now…{% endif %}
       </div>
-      <p style="color: var(--text-muted); margin: 0 0 20px;">
+      <p style="color: var(--muted); font-size: 13px; margin-bottom: 0;">
         This page updates live every 2 seconds.
       </p>
-
-      <div style="background: var(--surface2); border-radius: 8px; padding: 14px 16px; margin-bottom: 4px;">
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px;">Your note:</p>
-        <p style="font-size: 0.9rem; font-style: italic; margin: 0;">
-          {{ note.raw_text[:300] }}{% if note.raw_text|length > 300 %}…{% endif %}
-        </p>
+      <div class="processing-card__note-text">
+        {{ note.raw_text[:300] }}{% if note.raw_text|length > 300 %}…{% endif %}
       </div>
 
-      {# HTMX live progress: polls /progress every 2s #}
       <div hx-get="/notes/{{ note.id }}/progress"
            hx-trigger="every 2s"
            hx-target="#progress-inner"
            hx-swap="innerHTML">
       </div>
       <div id="progress-inner">
-        <div style="padding: 16px 0; color: var(--text-muted); font-size: 0.9rem;">Loading pipeline status…</div>
+        <div style="padding: 16px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono);">
+          Loading pipeline status…
+        </div>
       </div>
 
-      <p style="margin-top: 16px; font-size: 0.8rem; color: var(--text-muted);">
+      <p style="margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);">
         Submitted: {{ fmt_dt(note.created_at) }}
         {% if note.processing_started_at %} · Started: {{ fmt_dt(note.processing_started_at) }}{% endif %}
       </p>
@@ -79,44 +473,99 @@
       document.body.addEventListener("htmx:afterSettle", function(e) {
         if (e.target && e.target.id === "progress-inner") {
           const sig = document.getElementById("progress-done-signal");
-          if (sig) {
-            setTimeout(() => window.location.reload(), 1200);
-          }
+          if (sig) setTimeout(() => window.location.reload(), 1200);
         }
       });
     </script>
 
+  {# ── Failed state ───────────────────────────────────────── #}
   {% elif note.status == 'failed' %}
-    <div style="padding: 32px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 24px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-        <h2 style="color: var(--error); margin: 0;">Research Failed</h2>
-        {# Re-run button (C3) #}
+    <div class="meta-row">
+      <a href="/" class="btn btn-ghost">← Back</a>
+      <button class="btn btn-danger"
+              style="margin-left: auto;"
+              hx-delete="/notes/{{ note.id }}"
+              hx-confirm="Delete this note permanently? This cannot be undone."
+              hx-on::after-request="if(event.detail.successful) window.location='/'">
+        Delete
+      </button>
+    </div>
+
+    <div class="error-card">
+      <div class="error-card__title">
+        Research Failed
         <button class="btn"
                 hx-post="/notes/{{ note.id }}/rerun"
                 hx-on::after-request="if(event.detail.successful) window.location.reload()">
           ↺ Re-run
         </button>
       </div>
-      <p style="color: var(--text-muted); margin-bottom: 16px;">The pipeline encountered an error while processing your note.</p>
+      <p style="color: var(--muted); font-size: 13px;">The pipeline encountered an error while processing your note.</p>
       {% if note.error_message %}
-        <pre style="background: var(--surface2); padding: 12px; border-radius: 6px; font-size: 0.85rem; white-space: pre-wrap; color: var(--error);">{{ note.error_message }}</pre>
+        <pre class="error-card__pre">{{ note.error_message }}</pre>
       {% endif %}
-      <p style="margin-top: 16px; font-size: 0.9rem; color: var(--text-muted);">
-        <strong>Original note:</strong><br/>
-        {{ note.raw_text }}
+      <p style="margin-top: 16px; font-size: 13px; color: var(--muted);">
+        <strong>Original note:</strong><br/>{{ note.raw_text }}
       </p>
     </div>
 
+  {# ── Complete state ─────────────────────────────────────── #}
   {% elif note.status == 'complete' %}
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+
+    {# Note header card #}
+    <div class="note-header-card">
       <div>
-        <p style="font-size: 0.8rem; color: var(--text-muted);">
-          Created {{ fmt_dt(note.created_at) }}
-          {% if note.processing_finished_at %} · Completed {{ fmt_dt(note.processing_finished_at) }}{% endif %}
-        </p>
+        <h1 class="note-title">{{ note.report_title or note.raw_text[:80] }}</h1>
+        <div class="note-meta-row">
+          <span class="badge badge-complete"><span class="badge-dot"></span>complete</span>
+          {% if note.project_type %}
+            <span class="type-chip type-chip--{{ note.project_type }}">{{ note.project_type }}</span>
+          {% endif %}
+
+          {# Confidence radial SVG #}
+          {% if note.confidence %}
+            {% set pct = (note.confidence * 100)|int %}
+            {% set r = 14 %}
+            {% set circ = (2 * 3.14159 * r)|round(1) %}
+            {% set offset = (circ - (pct / 100 * circ))|round(1) %}
+            {% if pct >= 80 %}{% set arc_color = '#34d399' %}
+            {% elif pct >= 50 %}{% set arc_color = '#fbbf24' %}
+            {% else %}{% set arc_color = '#f87171' %}{% endif %}
+            <div class="conf-radial">
+              <svg width="36" height="36" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="{{ r }}" fill="none" stroke="var(--border)" stroke-width="2.5"/>
+                <circle cx="18" cy="18" r="{{ r }}" fill="none" stroke="{{ arc_color }}" stroke-width="2.5"
+                        stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ offset }}"
+                        stroke-linecap="round"
+                        transform="rotate(-90 18 18)"/>
+                <text x="18" y="22" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="{{ arc_color }}">{{ pct }}%</text>
+              </svg>
+            </div>
+          {% endif %}
+
+          {% if note.source %}
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">
+              {% if note.source == 'voice' %}🎙{% else %}✍{% endif %} {{ note.source }}
+            </span>
+          {% endif %}
+
+          {% if note.llm_provider %}
+            <span class="provider-badge">{{ note.llm_provider }}</span>
+          {% endif %}
+
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">
+            {{ fmt_dt(note.created_at) }}
+            {% if note.processing_finished_at %}
+              {% set secs = (note.processing_finished_at - note.processing_started_at).total_seconds()|int if note.processing_started_at else 0 %}
+              {% if secs > 0 %}
+                · {% if secs >= 60 %}{{ secs // 60 }}m {{ secs % 60 }}s{% else %}{{ secs }}s{% endif %}
+              {% endif %}
+            {% endif %}
+          </span>
+        </div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        {# Re-run button (C3) #}
+
+      <div class="note-actions">
         <button class="btn"
                 hx-post="/notes/{{ note.id }}/rerun"
                 hx-confirm="Re-run the full research pipeline on this note? The existing report will be replaced."
@@ -124,120 +573,155 @@
           ↺ Re-run
         </button>
         <a href="/notes/{{ note.id }}/export.md" class="btn btn-primary">⬇ Export .md</a>
+        <button class="btn btn-danger"
+                hx-delete="/notes/{{ note.id }}"
+                hx-confirm="Delete this note permanently? This cannot be undone."
+                hx-on::after-request="if(event.detail.successful) window.location='/'">
+          Delete
+        </button>
       </div>
     </div>
 
-    <div class="prose">
-      {% if rendered_html %}
-        {{ rendered_html | safe }}
-      {% else %}
-        <p style="color: var(--text-muted);">No report content available.</p>
-      {% endif %}
-    </div>
+    {# Tab nav #}
+    <nav class="tab-nav">
+      <button class="tab-btn tab-btn--active" data-tab="report">Report</button>
+      <button class="tab-btn" data-tab="sources">
+        Sources
+        {% if sources %}<span class="tab-count">{{ sources|length }}</span>{% endif %}
+      </button>
+      <button class="tab-btn" data-tab="pipeline">
+        Pipeline
+        {% if agent_logs %}<span class="tab-count">{{ agent_logs|length }}</span>{% endif %}
+      </button>
+      <button class="tab-btn" data-tab="history">
+        History
+        {% if report_versions %}<span class="tab-count">{{ report_versions|length }}</span>{% endif %}
+      </button>
+      <button class="tab-btn" data-tab="original">Original</button>
+    </nav>
 
-    <hr class="divider" />
+    <div class="tab-panels">
 
-    {# Agent log viewer (C4) #}
-    {% if agent_logs %}
-      <div style="margin-top: 16px; margin-bottom: 16px;">
-        <details>
-          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
-            Pipeline agent logs ({{ agent_logs|length }} stages)
-          </summary>
-          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+      {# ── Report tab ───────────────────────────────────────── #}
+      <div id="tab-report" class="tab-panel tab-panel--active">
+        <div class="prose">
+          {% if rendered_html %}
+            {{ rendered_html | safe }}
+          {% else %}
+            <p style="color: var(--muted);">No report content available.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── Sources tab ──────────────────────────────────────── #}
+      <div id="tab-sources" class="tab-panel">
+        {% if sources %}
+          <div class="sources-grid">
+            {% for src in sources %}
+              <div class="source-card">
+                <a href="{{ src.url }}" target="_blank" rel="noopener noreferrer" class="source-card__title">
+                  {{ src.title or src.url }}
+                </a>
+                {% set domain = src.url.split('/')[2] if src.url else '' %}
+                {% if domain %}
+                  <div class="source-card__domain">{{ domain }}</div>
+                {% endif %}
+                {% if src.snippet %}
+                  <p class="source-card__snippet">{{ src.snippet }}</p>
+                {% endif %}
+                <div class="source-card__footer">
+                  {% if src.query %}
+                    <span class="source-card__query" title="{{ src.query }}">{{ src.query[:40] }}{% if src.query|length > 40 %}…{% endif %}</span>
+                  {% endif %}
+                  {% if src.score %}
+                    <span class="score-badge">{{ "%.2f"|format(src.score) }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state" style="padding: 40px 0;">
+            <p>No sources were used for this note.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      {# ── Pipeline tab ─────────────────────────────────────── #}
+      <div id="tab-pipeline" class="tab-panel">
+        {% if agent_logs %}
+          <div class="timeline">
             {% for log in agent_logs %}
-              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-                <div style="background: var(--surface2); padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
-                  <span style="font-weight: 600; font-size: 0.85rem;">{{ log.agent_name }}</span>
+              <div class="timeline-item timeline-item--complete">
+                <div class="timeline-item__dot"></div>
+                <div class="timeline-item__header">
+                  <span class="timeline-item__name">{{ log.agent_name }}</span>
                   {% if log.duration_seconds %}
-                    <span style="font-size: 0.78rem; color: var(--text-muted);">{{ "%.1f"|format(log.duration_seconds) }}s</span>
+                    <span class="timeline-item__duration">{{ "%.1f"|format(log.duration_seconds) }}s</span>
                   {% endif %}
                 </div>
                 {% if log.output_text %}
-                  <pre style="margin: 0; padding: 12px 14px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--text-muted); max-height: 300px; overflow-y: auto; background: var(--surface);">{{ log.output_text }}</pre>
+                  <details class="timeline-item__output">
+                    <summary>View output</summary>
+                    <pre>{{ log.output_text }}</pre>
+                  </details>
                 {% endif %}
               </div>
             {% endfor %}
           </div>
-        </details>
+        {% else %}
+          <div class="empty-state" style="padding: 40px 0;">
+            <p>No pipeline logs available.</p>
+          </div>
+        {% endif %}
       </div>
-    {% endif %}
 
-    {# Report version history (3c) #}
-    {% if report_versions %}
-      <div style="margin-top: 8px;">
-        <details>
-          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
-            Previous versions ({{ report_versions|length }})
-          </summary>
-          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
-            {% for v in report_versions %}
-              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-                <div style="background: var(--surface2); padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
-                  <span style="font-size: 0.82rem; color: var(--text-muted);">
-                    {{ v.report_title or 'Untitled' }} — {{ fmt_dt(v.created_at) }}
-                  </span>
+      {# ── History tab ──────────────────────────────────────── #}
+      <div id="tab-history" class="tab-panel">
+        {% if report_versions %}
+          {% for v in report_versions %}
+            <div class="history-item">
+              <div class="history-item__header">
+                <div class="history-item__title">{{ v.report_title or 'Untitled' }}</div>
+                <div style="display: flex; gap: 12px; align-items: center;">
                   {% if v.llm_provider %}
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">{{ v.llm_provider }}</span>
+                    <span class="provider-badge">{{ v.llm_provider }}</span>
                   {% endif %}
-                </div>
-                <div style="padding: 14px; max-height: 300px; overflow-y: auto;">
-                  <div class="prose" style="font-size: 0.88rem;">
-                    {{ render_markdown(v.report_markdown) | safe }}
-                  </div>
+                  <span class="history-item__meta">{{ fmt_dt(v.created_at) }}</span>
                 </div>
               </div>
-            {% endfor %}
-          </div>
-        </details>
-      </div>
-    {% endif %}
-
-    {# Sources / search results tab (3b) #}
-    {% if sources %}
-      <div style="margin-top: 8px;">
-        <details>
-          <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
-            Sources ({{ sources|length }} search results)
-          </summary>
-          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-            {% for src in sources %}
-              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface);">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px;">
-                  <a href="{{ src.url }}" target="_blank" rel="noopener noreferrer"
-                     style="font-weight: 500; font-size: 0.88rem; word-break: break-word;">
-                    {{ src.title or src.url }}
-                  </a>
-                  {% if src.score %}
-                    <span style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;">
-                      score {{ "%.2f"|format(src.score) }}
-                    </span>
-                  {% endif %}
+              <div class="history-item__body">
+                <div class="prose" style="font-size: 13px;">
+                  {{ render_markdown(v.report_markdown) | safe }}
                 </div>
-                {% if src.query %}
-                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">
-                    Query: <em>{{ src.query }}</em>
-                  </div>
-                {% endif %}
-                {% if src.snippet %}
-                  <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
-                    {{ src.snippet[:300] }}{% if src.snippet|length > 300 %}…{% endif %}
-                  </p>
-                {% endif %}
               </div>
-            {% endfor %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state" style="padding: 40px 0;">
+            <p>No previous versions found.</p>
           </div>
-        </details>
+        {% endif %}
       </div>
-    {% endif %}
 
-    <div style="margin-top: 8px;">
-      <details>
-        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; user-select: none; padding: 4px 0;">
-          Original note text
-        </summary>
-        <div style="margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-size: 0.9rem; white-space: pre-wrap;">{{ note.raw_text }}</div>
-      </details>
-    </div>
+      {# ── Original tab ─────────────────────────────────────── #}
+      <div id="tab-original" class="tab-panel">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; font-size: 13px; white-space: pre-wrap; line-height: 1.7; color: var(--muted); font-family: var(--font-mono);">{{ note.raw_text }}</div>
+      </div>
+
+    </div><!-- /.tab-panels -->
+
   {% endif %}
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('tab-btn--active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('tab-panel--active'); });
+        btn.classList.add('tab-btn--active');
+        var panel = document.getElementById('tab-' + btn.dataset.tab);
+        if (panel) panel.classList.add('tab-panel--active');
+      });
+    });
+  </script>
 {% endblock %}

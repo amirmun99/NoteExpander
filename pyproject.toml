@@ -16,6 +16,7 @@ dependencies = [
     "tavily-python",
     "fastapi>=0.135.0",
     "uvicorn[standard]",
+    "python-multipart>=0.0.9",
     "jinja2",
     "markdown",
     "bleach",
